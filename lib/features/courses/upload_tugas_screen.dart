@@ -11,8 +11,7 @@ class UploadTugasScreen extends StatefulWidget {
 }
 
 class _UploadTugasScreenState extends State<UploadTugasScreen> {
-  bool _isFileSelected = false;
-  String _fileName = '';
+  final List<Map<String, String>> _selectedFiles = [];
 
   @override
   Widget build(BuildContext context) {
@@ -37,48 +36,62 @@ class _UploadTugasScreenState extends State<UploadTugasScreen> {
             ),
             const SizedBox(height: 12),
             const Text(
-              'Implementasikan solusi lengkap sesuai dengan petunjuk yang diberikan di modul. Pastikan file dalam format PDF dan ukuran maksimal 10MB.',
+              'Silakan unggah dokumen jawaban Anda. Pastikan nama file jelas dan format sesuai ketentuan.',
               style: TextStyle(color: AppColors.textSecondary, height: 1.5),
             ),
-            const SizedBox(height: 40),
+            const SizedBox(height: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: AppColors.primary.withOpacity(0.05),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.info_outline, size: 16, color: AppColors.primary),
+                  SizedBox(width: 8),
+                  Text(
+                    'Batas ukuran file: 10 MB (Format: PDF, ZIP, DOCX)',
+                    style: TextStyle(color: AppColors.primary, fontSize: 12, fontWeight: FontWeight.w500),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 32),
 
             // Upload Area
             GestureDetector(
               onTap: _pickFile,
               child: Container(
-                height: 250,
+                height: 180,
                 decoration: BoxDecoration(
                   color: AppColors.primary.withOpacity(0.02),
                   borderRadius: BorderRadius.circular(20),
-                  border: Border.all(
-                    color: AppColors.primary.withOpacity(0.3),
-                    width: 2,
-                    style: BorderStyle.none, // We'll use a custom painter if we want real dashes, but this is fine for now
-                  ),
                 ),
                 child: CustomPaint(
                   painter: DashPainter(color: AppColors.primary.withOpacity(0.3)),
-                  child: Center(
+                  child: const Center(
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Icon(
-                          _isFileSelected ? Icons.insert_drive_file : Icons.cloud_upload_outlined,
-                          size: 64,
+                          Icons.cloud_upload_outlined,
+                          size: 48,
                           color: AppColors.primary,
                         ),
-                        const SizedBox(height: 16),
+                        SizedBox(height: 12),
                         Text(
-                          _isFileSelected ? _fileName : 'Ketuk untuk pilih file',
-                          style: const TextStyle(
+                          'Pilih File untuk Diupload',
+                          style: TextStyle(
                             fontWeight: FontWeight.w600,
                             color: AppColors.textPrimary,
                           ),
                         ),
-                        const SizedBox(height: 8),
+                        SizedBox(height: 4),
                         Text(
-                          _isFileSelected ? 'File telah dipilih' : '(PDF, Max 10MB)',
-                          style: const TextStyle(
+                          'atau seret file ke sini',
+                          style: TextStyle(
                             color: AppColors.textSecondary,
                             fontSize: 12,
                           ),
@@ -89,11 +102,22 @@ class _UploadTugasScreenState extends State<UploadTugasScreen> {
                 ),
               ),
             ),
-            const SizedBox(height: 48),
+            const SizedBox(height: 32),
+
+            // File List
+            if (_selectedFiles.isNotEmpty) ...[
+              const Text(
+                'File yang diupload:',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+              ),
+              const SizedBox(height: 12),
+              ..._selectedFiles.map((file) => _buildFileItem(file)).toList(),
+              const SizedBox(height: 32),
+            ],
 
             // Submit Button
             ElevatedButton(
-              onPressed: _isFileSelected ? _handleSubmit : null,
+              onPressed: _selectedFiles.isNotEmpty ? _handleSubmit : null,
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.primary,
                 foregroundColor: Colors.white,
@@ -104,7 +128,7 @@ class _UploadTugasScreenState extends State<UploadTugasScreen> {
                 disabledBackgroundColor: Colors.grey.shade300,
               ),
               child: const Text(
-                'Kumpulkan Tugas',
+                'Submit / Simpan',
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
             ),
@@ -113,8 +137,8 @@ class _UploadTugasScreenState extends State<UploadTugasScreen> {
               child: TextButton(
                 onPressed: () {},
                 child: const Text(
-                  'Bantuan',
-                  style: TextStyle(color: AppColors.textSecondary),
+                  'Bantuan?',
+                  style: TextStyle(color: AppColors.textSecondary, fontWeight: FontWeight.w500),
                 ),
               ),
             ),
@@ -124,31 +148,83 @@ class _UploadTugasScreenState extends State<UploadTugasScreen> {
     );
   }
 
-  void _pickFile() {
-    // Simulate file picking
-    setState(() {
-      _isFileSelected = true;
-      _fileName = 'JAWABAN_${widget.taskTitle.replaceAll(' ', '_')}.pdf';
-    });
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('File terpilih: mockup_file.pdf')),
+  Widget _buildFileItem(Map<String, String> file) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey.shade200),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.picture_as_pdf, color: Colors.red, size: 32),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  file['name']!,
+                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                  overflow: TextOverflow.ellipsis,
+                ),
+                Text(
+                  file['size']!,
+                  style: const TextStyle(color: AppColors.textSecondary, fontSize: 12),
+                ),
+              ],
+            ),
+          ),
+          IconButton(
+            icon: const Icon(Icons.delete_outline, color: Colors.red),
+            onPressed: () => _removeFile(file),
+          ),
+        ],
+      ),
     );
   }
 
+  void _pickFile() {
+    setState(() {
+      _selectedFiles.add({
+        'name': 'JAWABAN_${widget.taskTitle.replaceAll(' ', '_')}_ALIF.pdf',
+        'size': '2.4 MB',
+      });
+    });
+  }
+
+  void _removeFile(Map<String, String> file) {
+    setState(() {
+      _selectedFiles.remove(file);
+    });
+  }
+
   void _handleSubmit() {
-    // Show success dialog
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Berhasil!'),
-        content: const Text('Tugas Anda telah berhasil dikumpulkan.'),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Row(
+          children: [
+            Icon(Icons.check_circle, color: Colors.green),
+            SizedBox(width: 12),
+            Text('Berhasil dikirim!'),
+          ],
+        ),
+        content: const Text('Tugas Anda telah tersimpan dan berhasil dikirim ke dosen.'),
         actions: [
-          TextButton(
+          ElevatedButton(
             onPressed: () {
-              Navigator.of(context).pop(); // Close dialog
-              Navigator.of(context).pop(); // Go back to detail
+              Navigator.of(context).pop();
+              Navigator.of(context).pop();
             },
-            child: const Text('OK'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+            child: const Text('Tutup', style: TextStyle(color: Colors.white)),
           ),
         ],
       ),
