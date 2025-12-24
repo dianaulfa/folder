@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../core/theme/app_theme.dart';
 import '../courses/my_classes_screen.dart';
+import '../notifications/notification_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   final String userName;
@@ -40,7 +41,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       case 1:
         return const MyClassesScreen();
       case 2:
-        return const Center(child: Text('Halaman Notifikasi (Segera Hadir)'));
+        return const NotificationScreen();
       default:
         return _buildHomeContent();
     }
