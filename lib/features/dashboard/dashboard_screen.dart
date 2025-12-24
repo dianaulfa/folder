@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../core/theme/app_theme.dart';
+import '../courses/my_classes_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   final String userName;
@@ -33,6 +34,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Widget _buildBody() {
+    switch (_currentIndex) {
+      case 0:
+        return _buildHomeContent();
+      case 1:
+        return const MyClassesScreen();
+      case 2:
+        return const Center(child: Text('Halaman Notifikasi (Segera Hadir)'));
+      default:
+        return _buildHomeContent();
+    }
+  }
+
+  Widget _buildHomeContent() {
     return CustomScrollView(
       slivers: [
         // App Bar / Header
