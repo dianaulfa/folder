@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../core/theme/app_theme.dart';
 import '../courses/my_classes_screen.dart';
 import '../notifications/notification_screen.dart';
+import '../profile/profile_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   final String userName;
@@ -26,9 +27,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
         selectedItemColor: AppColors.primary,
         unselectedItemColor: AppColors.textSecondary,
         items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
-          BottomNavigationBarItem(icon: Icon(Icons.book), label: 'Kelas Saya'),
-          BottomNavigationBarItem(icon: Icon(Icons.notifications), label: 'Notifikasi'),
+          BottomNavigationBarItem(icon: Icon(Icons.home_outlined), activeIcon: Icon(Icons.home), label: 'Beranda'),
+          BottomNavigationBarItem(icon: Icon(Icons.school_outlined), activeIcon: Icon(Icons.school), label: 'Kelas Saya'),
+          BottomNavigationBarItem(icon: Icon(Icons.notifications_outlined), activeIcon: Icon(Icons.notifications), label: 'Notifikasi'),
+          BottomNavigationBarItem(icon: Icon(Icons.person_outline), activeIcon: Icon(Icons.person), label: 'Profil'),
         ],
       ),
     );
@@ -42,6 +44,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
         return const MyClassesScreen();
       case 2:
         return const NotificationScreen();
+      case 3:
+        return ProfileScreen(userName: widget.userName);
       default:
         return _buildHomeContent();
     }
