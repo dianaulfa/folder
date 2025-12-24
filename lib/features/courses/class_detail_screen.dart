@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../core/theme/app_theme.dart';
+import 'upload_tugas_screen.dart';
 
 class ClassDetailScreen extends StatelessWidget {
   final String courseName;
@@ -270,7 +271,15 @@ class ClassDetailScreen extends StatelessWidget {
               SizedBox(
                 width: double.infinity,
                 child: OutlinedButton(
-                  onPressed: () {},
+                  onPressed: () {
+                    if (!isDone) {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (context) => UploadTugasScreen(taskTitle: item['title']!),
+                        ),
+                      );
+                    }
+                  },
                   style: OutlinedButton.styleFrom(
                     side: BorderSide(color: isDone ? Colors.grey : AppColors.primary),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
