@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import '../../core/theme/app_theme.dart';
+import '../profile/profile_screen.dart';
 
 class NotificationScreen extends StatelessWidget {
-  const NotificationScreen({super.key});
+  final String userName;
+
+  const NotificationScreen({super.key, required this.userName});
 
   @override
   Widget build(BuildContext context) {
@@ -51,9 +54,20 @@ class NotificationScreen extends StatelessWidget {
         title: const Text('Notifikasi', style: TextStyle(fontWeight: FontWeight.bold)),
         centerTitle: true,
         actions: [
+          IconButton(
+            icon: const Icon(Icons.person_outline),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => ProfileScreen(userName: userName),
+                ),
+              );
+            },
+          ),
           TextButton(
             onPressed: () {},
-            child: const Text('Tandai Semua Dibaca', style: TextStyle(color: AppColors.primary, fontSize: 12)),
+            child: const Text('Tandai Semua', style: TextStyle(color: AppColors.primary, fontSize: 10)),
           ),
         ],
       ),

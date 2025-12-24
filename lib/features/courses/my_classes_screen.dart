@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import '../../core/theme/app_theme.dart';
 import 'class_detail_screen.dart';
+import '../profile/profile_screen.dart';
 
 class MyClassesScreen extends StatelessWidget {
-  const MyClassesScreen({super.key});
+  final String userName;
+
+  const MyClassesScreen({super.key, required this.userName});
 
   @override
   Widget build(BuildContext context) {
@@ -21,6 +24,20 @@ class MyClassesScreen extends StatelessWidget {
       appBar: AppBar(
         title: const Text('Kelas Saya', style: TextStyle(fontWeight: FontWeight.bold)),
         centerTitle: true,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.person_outline),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => ProfileScreen(userName: userName),
+                ),
+              );
+            },
+          ),
+          const SizedBox(width: 8),
+        ],
       ),
       body: ListView.builder(
         padding: const EdgeInsets.all(20),

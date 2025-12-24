@@ -26,11 +26,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
         onTap: (index) => setState(() => _currentIndex = index),
         selectedItemColor: AppColors.primary,
         unselectedItemColor: AppColors.textSecondary,
+        type: BottomNavigationBarType.fixed,
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.home_outlined), activeIcon: Icon(Icons.home), label: 'Beranda'),
           BottomNavigationBarItem(icon: Icon(Icons.school_outlined), activeIcon: Icon(Icons.school), label: 'Kelas Saya'),
           BottomNavigationBarItem(icon: Icon(Icons.notifications_outlined), activeIcon: Icon(Icons.notifications), label: 'Notifikasi'),
-          BottomNavigationBarItem(icon: Icon(Icons.person_outline), activeIcon: Icon(Icons.person), label: 'Profil'),
         ],
       ),
     );
@@ -41,11 +41,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
       case 0:
         return _buildHomeContent();
       case 1:
-        return const MyClassesScreen();
+        return MyClassesScreen(userName: widget.userName);
       case 2:
-        return const NotificationScreen();
-      case 3:
-        return ProfileScreen(userName: widget.userName);
+        return NotificationScreen(userName: widget.userName);
       default:
         return _buildHomeContent();
     }
@@ -90,10 +88,20 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     ),
                   ],
                 ),
-                const CircleAvatar(
-                  radius: 28,
-                  backgroundColor: Colors.white24,
-                  child: Icon(Icons.person, color: Colors.white, size: 32),
+                GestureDetector(
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => ProfileScreen(userName: widget.userName),
+                      ),
+                    );
+                  },
+                  child: const CircleAvatar(
+                    radius: 28,
+                    backgroundColor: Colors.white24,
+                    child: Icon(Icons.person, color: Colors.white, size: 32),
+                  ),
                 ),
               ],
             ),
