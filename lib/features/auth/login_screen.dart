@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../core/theme/app_theme.dart';
+import '../dashboard/dashboard_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -155,12 +156,15 @@ class _LoginScreenState extends State<LoginScreen> {
 
   void _handleLogin() {
     if (_formKey.currentState!.validate()) {
-      // Logic for login navigation (to be implemented)
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Logging in...')),
+      String email = _emailController.text;
+      String name = email.split('@')[0];
+      name = name[0].toUpperCase() + name.substring(1);
+
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(
+          builder: (context) => DashboardScreen(userName: name),
+        ),
       );
-      // Simulate navigation to dashboard
-      // we'll implement dashboard soon
     }
   }
 
