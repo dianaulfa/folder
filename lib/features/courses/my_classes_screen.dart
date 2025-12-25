@@ -68,7 +68,10 @@ class MyClassesScreen extends StatelessWidget {
         onTap: () {
           Navigator.of(context).push(
             MaterialPageRoute(
-              builder: (context) => ClassDetailScreen(courseName: course['name']),
+              builder: (context) => ClassDetailScreen(
+                courseName: course['name'],
+                userName: userName,
+              ),
             ),
           );
         },

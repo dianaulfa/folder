@@ -1,11 +1,53 @@
 import 'package:flutter/material.dart';
 import '../../core/theme/app_theme.dart';
 import 'upload_tugas_screen.dart';
+import 'services/quiz_service.dart';
+import 'models/quiz_models.dart';
+import 'quiz_play_screen.dart';
+import 'quiz_result_screen.dart';
 
-class ClassDetailScreen extends StatelessWidget {
+class ClassDetailScreen extends StatefulWidget {
   final String courseName;
+  final String userName;
 
-  const ClassDetailScreen({super.key, required this.courseName});
+  const ClassDetailScreen({
+    super.key,
+    required this.courseName,
+    required this.userName,
+  });
+
+  @override
+  State<ClassDetailScreen> createState() => _ClassDetailScreenState();
+}
+
+class _ClassDetailScreenState extends State<ClassDetailScreen> {
+  final QuizService _quizService = QuizService();
+  List<Quiz> _quizzes = [];
+  Map<String, QuizSubmission?> _submissions = {};
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadQuizData();
+  }
+
+  Future<void> _loadQuizData() async {
+    setState(() => _isLoading = true);
+    final quizzes = await _quizService.getQuizzesByCourse(widget.courseName);
+    
+    Map<String, QuizSubmission?> submissions = {};
+    for (var quiz in quizzes) {
+      final sub = await _quizService.getSubmission(widget.userName, quiz.id);
+      submissions[quiz.id] = sub;
+    }
+
+    setState(() {
+      _quizzes = quizzes;
+      _submissions = submissions;
+      _isLoading = false;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -70,7 +112,7 @@ class ClassDetailScreen extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  courseName,
+                  widget.courseName,
                   style: const TextStyle(
                     color: Colors.white,
                     fontSize: 20,
@@ -295,15 +337,156 @@ class ClassDetailScreen extends StatelessWidget {
   }
 
   Widget _buildKuisTab(BuildContext context) {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.quiz, size: 80, color: AppColors.primary.withOpacity(0.2)),
-          const SizedBox(height: 16),
-          const Text('Belum ada kuis yang tersedia.', style: TextStyle(color: AppColors.textSecondary)),
-        ],
-      ),
+    if (_isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    if (_quizzes.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.quiz, size: 80, color: AppColors.primary.withOpacity(0.2)),
+            const SizedBox(height: 16),
+            const Text('Belum ada kuis yang tersedia.', style: TextStyle(color: AppColors.textSecondary)),
+          ],
+        ),
+      );
+    }
+
+    return ListView.builder(
+      padding: const EdgeInsets.all(20),
+      itemCount: _quizzes.length,
+      itemBuilder: (context, index) {
+        final quiz = _quizzes[index];
+        final submission = _submissions[quiz.id];
+        final bool isDone = submission != null;
+
+        return Container(
+          margin: const EdgeInsets.only(bottom: 16),
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.05),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Expanded(
+                    child: Text(
+                      quiz.title,
+                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                    ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: isDone ? Colors.green.withOpacity(0.1) : Colors.orange.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Text(
+                      isDone ? 'Sudah Dikerjakan' : 'Tersedia',
+                      style: TextStyle(
+                        color: isDone ? Colors.green : Colors.orange,
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Text(
+                quiz.description,
+                style: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  const Icon(Icons.timer, size: 14, color: AppColors.textSecondary),
+                  const SizedBox(width: 4),
+                  Text(
+                    'Durasi: ${quiz.durationMinutes} Menit',
+                    style: const TextStyle(color: AppColors.textSecondary, fontSize: 12),
+                  ),
+                  const SizedBox(width: 16),
+                  const Icon(Icons.help_outline, size: 14, color: AppColors.textSecondary),
+                  const SizedBox(width: 4),
+                  Text(
+                    '${quiz.questions.length} Soal',
+                    style: const TextStyle(color: AppColors.textSecondary, fontSize: 12),
+                  ),
+                ],
+              ),
+              if (isDone) ...[
+                const SizedBox(height: 12),
+                const Divider(),
+                const SizedBox(height: 8),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Nilai: ${submission.score}',
+                      style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.primary),
+                    ),
+                    TextButton(
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => QuizResultScreen(
+                              quiz: quiz,
+                              submission: submission,
+                            ),
+                          ),
+                        );
+                      },
+                      child: const Text('Lihat Detail'),
+                    ),
+                  ],
+                ),
+              ] else ...[
+                const SizedBox(height: 16),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: () async {
+                      final result = await Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => QuizPlayScreen(
+                            quiz: quiz,
+                            userName: widget.userName,
+                          ),
+                        ),
+                      );
+                      if (result == true) {
+                        _loadQuizData();
+                      }
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    ),
+                    child: const Text('Mulai Kuis'),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        );
+      },
     );
   }
 }
