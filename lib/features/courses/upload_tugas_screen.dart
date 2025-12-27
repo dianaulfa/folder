@@ -1,17 +1,31 @@
 import 'package:flutter/material.dart';
+import 'package:file_picker/file_picker.dart';
 import '../../core/theme/app_theme.dart';
+import 'models/assignment_models.dart';
+import 'services/assignment_service.dart';
 
 class UploadTugasScreen extends StatefulWidget {
+  final String courseId;
+  final String assignmentId;
   final String taskTitle;
+  final String userName;
 
-  const UploadTugasScreen({super.key, required this.taskTitle});
+  const UploadTugasScreen({
+    super.key,
+    required this.courseId,
+    required this.assignmentId,
+    required this.taskTitle,
+    required this.userName,
+  });
 
   @override
   State<UploadTugasScreen> createState() => _UploadTugasScreenState();
 }
 
 class _UploadTugasScreenState extends State<UploadTugasScreen> {
-  final List<Map<String, String>> _selectedFiles = [];
+  final AssignmentService _assignmentService = AssignmentService();
+  final List<PlatformFile> _selectedFiles = [];
+  bool _isUploading = false;
 
   @override
   Widget build(BuildContext context) {
@@ -52,7 +66,7 @@ class _UploadTugasScreenState extends State<UploadTugasScreen> {
                   Icon(Icons.info_outline, size: 16, color: AppColors.primary),
                   SizedBox(width: 8),
                   Text(
-                    'Batas ukuran file: 10 MB (Format: PDF, ZIP, DOCX)',
+                    'Batas ukuran file: 10 MB (Format: PDF, DOCX, ZIP, JPG, PNG)',
                     style: TextStyle(color: AppColors.primary, fontSize: 12, fontWeight: FontWeight.w500),
                   ),
                 ],
@@ -62,7 +76,7 @@ class _UploadTugasScreenState extends State<UploadTugasScreen> {
 
             // Upload Area
             GestureDetector(
-              onTap: _pickFile,
+              onTap: _isUploading ? null : _pickFile,
               child: Container(
                 height: 180,
                 decoration: BoxDecoration(
@@ -71,27 +85,27 @@ class _UploadTugasScreenState extends State<UploadTugasScreen> {
                 ),
                 child: CustomPaint(
                   painter: DashPainter(color: AppColors.primary.withOpacity(0.3)),
-                  child: const Center(
+                  child: Center(
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(
+                        const Icon(
                           Icons.cloud_upload_outlined,
                           size: 48,
                           color: AppColors.primary,
                         ),
-                        SizedBox(height: 12),
-                        Text(
+                        const SizedBox(height: 12),
+                        const Text(
                           'Pilih File untuk Diupload',
                           style: TextStyle(
                             fontWeight: FontWeight.w600,
                             color: AppColors.textPrimary,
                           ),
                         ),
-                        SizedBox(height: 4),
+                        const SizedBox(height: 4),
                         Text(
-                          'atau seret file ke sini',
-                          style: TextStyle(
+                          _isUploading ? 'Sedang memproses...' : 'Mendukung berbagai format file',
+                          style: const TextStyle(
                             color: AppColors.textSecondary,
                             fontSize: 12,
                           ),
@@ -107,7 +121,7 @@ class _UploadTugasScreenState extends State<UploadTugasScreen> {
             // File List
             if (_selectedFiles.isNotEmpty) ...[
               const Text(
-                'File yang diupload:',
+                'File yang dipilih:',
                 style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
               ),
               const SizedBox(height: 12),
@@ -117,7 +131,7 @@ class _UploadTugasScreenState extends State<UploadTugasScreen> {
 
             // Submit Button
             ElevatedButton(
-              onPressed: _selectedFiles.isNotEmpty ? _handleSubmit : null,
+              onPressed: (_selectedFiles.isNotEmpty && !_isUploading) ? _handleSubmit : null,
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.primary,
                 foregroundColor: Colors.white,
@@ -127,20 +141,12 @@ class _UploadTugasScreenState extends State<UploadTugasScreen> {
                 ),
                 disabledBackgroundColor: Colors.grey.shade300,
               ),
-              child: const Text(
-                'Submit / Simpan',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-              ),
-            ),
-            const SizedBox(height: 24),
-            Center(
-              child: TextButton(
-                onPressed: () {},
-                child: const Text(
-                  'Bantuan?',
-                  style: TextStyle(color: AppColors.textSecondary, fontWeight: FontWeight.w500),
-                ),
-              ),
+              child: _isUploading
+                  ? const CircularProgressIndicator(color: Colors.white)
+                  : const Text(
+                      'Submit / Simpan',
+                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    ),
             ),
           ],
         ),
@@ -148,7 +154,19 @@ class _UploadTugasScreenState extends State<UploadTugasScreen> {
     );
   }
 
-  Widget _buildFileItem(Map<String, String> file) {
+  Widget _buildFileItem(PlatformFile file) {
+    String fileSize = (file.size / (1024 * 1024)).toStringAsFixed(2) + ' MB';
+    IconData fileIcon = Icons.insert_drive_file;
+    Color iconColor = AppColors.primary;
+
+    if (file.extension?.toLowerCase() == 'pdf') {
+      fileIcon = Icons.picture_as_pdf;
+      iconColor = Colors.red;
+    } else if (['jpg', 'jpeg', 'png'].contains(file.extension?.toLowerCase())) {
+      fileIcon = Icons.image;
+      iconColor = Colors.blue;
+    }
+
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -159,19 +177,19 @@ class _UploadTugasScreenState extends State<UploadTugasScreen> {
       ),
       child: Row(
         children: [
-          const Icon(Icons.picture_as_pdf, color: Colors.red, size: 32),
+          Icon(fileIcon, color: iconColor, size: 32),
           const SizedBox(width: 16),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  file['name']!,
+                  file.name,
                   style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
                   overflow: TextOverflow.ellipsis,
                 ),
                 Text(
-                  file['size']!,
+                  fileSize,
                   style: const TextStyle(color: AppColors.textSecondary, fontSize: 12),
                 ),
               ],
@@ -186,24 +204,85 @@ class _UploadTugasScreenState extends State<UploadTugasScreen> {
     );
   }
 
-  void _pickFile() {
-    setState(() {
-      _selectedFiles.add({
-        'name': 'JAWABAN_${widget.taskTitle.replaceAll(' ', '_')}_ALIF.pdf',
-        'size': '2.4 MB',
-      });
-    });
+  Future<void> _pickFile() async {
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['pdf', 'docx', 'doc', 'zip', 'jpg', 'jpeg', 'png', 'ppt', 'pptx'],
+      );
+
+      if (result != null && result.files.isNotEmpty) {
+        final file = result.files.first;
+        
+        // Validation: Max 10MB
+        if (file.size > 10 * 1024 * 1024) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Ukuran file maksimal 10 MB')),
+            );
+          }
+          return;
+        }
+
+        setState(() {
+          _selectedFiles.clear(); // Allowing one file per submission as per common patterns
+          _selectedFiles.add(file);
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Gagal memilih file: $e')),
+        );
+      }
+    }
   }
 
-  void _removeFile(Map<String, String> file) {
+  void _removeFile(PlatformFile file) {
     setState(() {
       _selectedFiles.remove(file);
     });
   }
 
-  void _handleSubmit() {
+  Future<void> _handleSubmit() async {
+    setState(() => _isUploading = true);
+
+    try {
+      final file = _selectedFiles.first;
+      
+      final submission = AssignmentSubmission(
+        studentId: widget.userName,
+        courseId: widget.courseId,
+        assignmentId: widget.assignmentId,
+        fileName: file.name,
+        fileType: file.extension ?? 'unknown',
+        fileSize: file.size,
+        filePath: file.path ?? '',
+        uploadTime: DateTime.now(),
+      );
+
+      await _assignmentService.submitAssignment(submission);
+
+      if (mounted) {
+        _showSuccessDialog();
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Gagal mengirim tugas: $e')),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isUploading = false);
+      }
+    }
+  }
+
+  void _showSuccessDialog() {
     showDialog(
       context: context,
+      barrierDismissible: false,
       builder: (context) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: const Row(
@@ -217,8 +296,8 @@ class _UploadTugasScreenState extends State<UploadTugasScreen> {
         actions: [
           ElevatedButton(
             onPressed: () {
-              Navigator.of(context).pop();
-              Navigator.of(context).pop();
+              Navigator.of(context).pop(); // dialog
+              Navigator.of(context).pop(true); // screen
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.primary,

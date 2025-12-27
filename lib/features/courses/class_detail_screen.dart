@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import '../../core/theme/app_theme.dart';
 import 'upload_tugas_screen.dart';
 import 'services/quiz_service.dart';
+import 'services/assignment_service.dart';
 import 'models/quiz_models.dart';
+import 'models/assignment_models.dart';
 import 'quiz_play_screen.dart';
 import 'quiz_result_screen.dart';
 
@@ -24,8 +26,10 @@ class ClassDetailScreen extends StatefulWidget {
 
 class _ClassDetailScreenState extends State<ClassDetailScreen> {
   final QuizService _quizService = QuizService();
+  final AssignmentService _assignmentService = AssignmentService();
   List<Quiz> _quizzes = [];
   Map<String, QuizSubmission?> _submissions = {};
+  Map<String, AssignmentSubmission?> _assignmentSubmissions = {};
   bool _isLoading = true;
 
   @override
@@ -36,17 +40,26 @@ class _ClassDetailScreenState extends State<ClassDetailScreen> {
 
   Future<void> _loadQuizData() async {
     setState(() => _isLoading = true);
-    final quizzes = await _quizService.getQuizzesByCourse(widget.courseId);
     
+    // Load Quizzes
+    final quizzes = await _quizService.getQuizzesByCourse(widget.courseId);
     Map<String, QuizSubmission?> submissions = {};
     for (var quiz in quizzes) {
       final sub = await _quizService.getSubmission(widget.userName, quiz.id);
       submissions[quiz.id] = sub;
     }
 
+    // Load Assignment Submissions
+    final assignSubs = await _assignmentService.getSubmissionsByCourse(widget.userName, widget.courseId);
+    Map<String, AssignmentSubmission?> assignmentMap = {};
+    for (var sub in assignSubs) {
+      assignmentMap[sub.assignmentId] = sub;
+    }
+
     setState(() {
       _quizzes = quizzes;
       _submissions = submissions;
+      _assignmentSubmissions = assignmentMap;
       _isLoading = false;
     });
   }
@@ -262,9 +275,13 @@ class _ClassDetailScreenState extends State<ClassDetailScreen> {
   }
 
   Widget _buildTugasTab(BuildContext context) {
+    if (_isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
     final tasks = [
-      {'title': 'Tugas 1: Implementasi Array', 'deadline': '20 Sep 2023, 23:59', 'status': 'Sudah Dikumpulkan'},
-      {'title': 'Tugas 2: Linked List Logic', 'deadline': '05 Okt 2023, 23:59', 'status': 'Belum Selesai'},
+      {'id': 'task-1', 'title': 'Tugas 1: Implementasi Array', 'deadline': '20 Sep 2023, 23:59'},
+      {'id': 'task-2', 'title': 'Tugas 2: Linked List Logic', 'deadline': '05 Okt 2023, 23:59'},
     ];
 
     return ListView.builder(
@@ -272,13 +289,22 @@ class _ClassDetailScreenState extends State<ClassDetailScreen> {
       itemCount: tasks.length,
       itemBuilder: (context, index) {
         final item = tasks[index];
-        bool isDone = item['status'] == 'Sudah Dikumpulkan';
+        final submission = _assignmentSubmissions[item['id']];
+        bool isDone = submission != null;
+
         return Container(
           margin: const EdgeInsets.only(bottom: 16),
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(12),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.05),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+              ),
+            ],
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -286,7 +312,12 @@ class _ClassDetailScreenState extends State<ClassDetailScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(item['title']!, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                  Expanded(
+                    child: Text(
+                      item['title']!, 
+                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)
+                    ),
+                  ),
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
@@ -294,8 +325,12 @@ class _ClassDetailScreenState extends State<ClassDetailScreen> {
                       borderRadius: BorderRadius.circular(6),
                     ),
                     child: Text(
-                      item['status']!,
-                      style: TextStyle(color: isDone ? Colors.green : Colors.orange, fontSize: 10, fontWeight: FontWeight.bold),
+                      isDone ? 'Sudah Mengumpulkan' : 'Belum Selesai',
+                      style: TextStyle(
+                        color: isDone ? Colors.green : Colors.orange, 
+                        fontSize: 10, 
+                        fontWeight: FontWeight.bold
+                      ),
                     ),
                   ),
                 ],
@@ -311,30 +346,109 @@ class _ClassDetailScreenState extends State<ClassDetailScreen> {
                   ),
                 ],
               ),
+              if (isDone) ...[
+                const SizedBox(height: 12),
+                const Divider(),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    const Icon(Icons.file_present, size: 16, color: AppColors.primary),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        submission.fileName,
+                        style: const TextStyle(fontSize: 13, color: AppColors.textPrimary),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
               const SizedBox(height: 12),
               SizedBox(
                 width: double.infinity,
                 child: OutlinedButton(
-                  onPressed: () {
+                  onPressed: () async {
                     if (!isDone) {
-                      Navigator.of(context).push(
+                      final result = await Navigator.of(context).push(
                         MaterialPageRoute(
-                          builder: (context) => UploadTugasScreen(taskTitle: item['title']!),
+                          builder: (context) => UploadTugasScreen(
+                            courseId: widget.courseId,
+                            assignmentId: item['id']!,
+                            taskTitle: item['title']!,
+                            userName: widget.userName,
+                          ),
                         ),
                       );
+                      if (result == true) {
+                        _loadQuizData(); // Refresh all data
+                      }
+                    } else {
+                      _showSubmissionDetails(submission);
                     }
                   },
                   style: OutlinedButton.styleFrom(
                     side: BorderSide(color: isDone ? Colors.grey : AppColors.primary),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                   ),
-                  child: Text(isDone ? 'Lihat Tugas' : 'Upload Tugas', style: TextStyle(color: isDone ? Colors.grey : AppColors.primary)),
+                  child: Text(
+                    isDone ? 'Lihat Tugas' : 'Upload Tugas', 
+                    style: TextStyle(color: isDone ? Colors.grey : AppColors.primary)
+                  ),
                 ),
               ),
             ],
           ),
         );
       },
+    );
+  }
+
+  void _showSubmissionDetails(AssignmentSubmission submission) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text('Detail Pengumpulan'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildDetailRow('File', submission.fileName),
+            _buildDetailRow('Tipe', submission.fileType),
+            _buildDetailRow('Ukuran', '${(submission.fileSize / 1024).toStringAsFixed(2)} KB'),
+            _buildDetailRow('Waktu', submission.uploadTime.toString().split('.')[0]),
+            _buildDetailRow('Status', submission.status),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Tutup'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDetailRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 70,
+            child: Text(
+              '$label:',
+              style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.textSecondary),
+            ),
+          ),
+          Expanded(
+            child: Text(value, style: const TextStyle(color: AppColors.textPrimary)),
+          ),
+        ],
+      ),
     );
   }
 
