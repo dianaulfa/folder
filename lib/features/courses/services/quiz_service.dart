@@ -13,7 +13,7 @@ class QuizService {
   final List<Quiz> _mockQuizzes = [
     Quiz(
       id: 'q1',
-      courseId: 'Algoritma & Pemrograman',
+      courseId: 'IF-101',
       title: 'Kuis 1: Dasar Algoritma',
       description: 'Uji pemahaman Anda tentang konsep dasar algoritma dan flow control.',
       durationMinutes: 10,
@@ -42,7 +42,7 @@ class QuizService {
     ),
     Quiz(
       id: 'q2',
-      courseId: 'Basis Data',
+      courseId: 'CS-305',
       title: 'Kuis 1: Pengenalan SQL',
       description: 'Kuis singkat mengenai perintah dasar SQL.',
       durationMinutes: 5,
@@ -54,11 +54,25 @@ class QuizService {
         ),
       ],
     ),
+    Quiz(
+      id: 'q3',
+      courseId: 'MA-202',
+      title: 'Kuis 1: Turunan & Integral',
+      description: 'Kuis evaluasi pemahaman kalkulus lanjut.',
+      durationMinutes: 15,
+      questions: [
+        QuizQuestion(
+          question: 'Apa turunan dari f(x) = x^2?',
+          options: ['x', '2x', 'x/2', '2'],
+          correctAnswerIndex: 1,
+        ),
+      ],
+    ),
   ];
 
-  Future<List<Quiz>> getQuizzesByCourse(String courseName) async {
+  Future<List<Quiz>> getQuizzesByCourse(String courseId) async {
     // In a real app, this would fetch from a database or API
-    return _mockQuizzes.where((q) => q.courseId == courseName).toList();
+    return _mockQuizzes.where((q) => q.courseId == courseId).toList();
   }
 
   Future<void> submitQuiz(QuizSubmission submission) async {

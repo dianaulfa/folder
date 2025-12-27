@@ -7,11 +7,13 @@ import 'quiz_play_screen.dart';
 import 'quiz_result_screen.dart';
 
 class ClassDetailScreen extends StatefulWidget {
+  final String courseId;
   final String courseName;
   final String userName;
 
   const ClassDetailScreen({
     super.key,
+    required this.courseId,
     required this.courseName,
     required this.userName,
   });
@@ -34,7 +36,7 @@ class _ClassDetailScreenState extends State<ClassDetailScreen> {
 
   Future<void> _loadQuizData() async {
     setState(() => _isLoading = true);
-    final quizzes = await _quizService.getQuizzesByCourse(widget.courseName);
+    final quizzes = await _quizService.getQuizzesByCourse(widget.courseId);
     
     Map<String, QuizSubmission?> submissions = {};
     for (var quiz in quizzes) {
