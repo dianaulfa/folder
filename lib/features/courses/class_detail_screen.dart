@@ -3,10 +3,13 @@ import '../../core/theme/app_theme.dart';
 import 'upload_tugas_screen.dart';
 import 'services/quiz_service.dart';
 import 'services/assignment_service.dart';
+import 'services/material_service.dart';
 import 'models/quiz_models.dart';
 import 'models/assignment_models.dart';
+import 'models/material_models.dart';
 import 'quiz_play_screen.dart';
 import 'quiz_result_screen.dart';
+import 'material_viewer_screen.dart';
 
 class ClassDetailScreen extends StatefulWidget {
   final String courseId;
@@ -27,18 +30,21 @@ class ClassDetailScreen extends StatefulWidget {
 class _ClassDetailScreenState extends State<ClassDetailScreen> {
   final QuizService _quizService = QuizService();
   final AssignmentService _assignmentService = AssignmentService();
+  final MaterialService _materialService = MaterialService();
   List<Quiz> _quizzes = [];
+  List<MeetingSection> _meetingSections = [];
   Map<String, QuizSubmission?> _submissions = {};
   Map<String, AssignmentSubmission?> _assignmentSubmissions = {};
+  Map<String, bool> _materialOpenedStatus = {};
   bool _isLoading = true;
 
   @override
   void initState() {
     super.initState();
-    _loadQuizData();
+    _loadAllData();
   }
 
-  Future<void> _loadQuizData() async {
+  Future<void> _loadAllData() async {
     setState(() => _isLoading = true);
     
     // Load Quizzes
@@ -56,10 +62,22 @@ class _ClassDetailScreenState extends State<ClassDetailScreen> {
       assignmentMap[sub.assignmentId] = sub;
     }
 
+    // Load Materials
+    final sections = await _materialService.getMaterialsByCourse(widget.courseId);
+    Map<String, bool> materialStatusMap = {};
+    for (var section in sections) {
+      for (var item in section.materials) {
+        final opened = await _materialService.isOpened(widget.userName, item.id);
+        materialStatusMap[item.id] = opened;
+      }
+    }
+
     setState(() {
       _quizzes = quizzes;
+      _meetingSections = sections;
       _submissions = submissions;
       _assignmentSubmissions = assignmentMap;
+      _materialOpenedStatus = materialStatusMap;
       _isLoading = false;
     });
   }
@@ -172,30 +190,28 @@ class _ClassDetailScreenState extends State<ClassDetailScreen> {
   }
 
   Widget _buildMateriTab(BuildContext context) {
-    final sections = [
-      {
-        'section': 'Pertemuan 1: Pengenalan Algoritma',
-        'items': [
-          {'title': 'Silabus Perkuliahan', 'type': 'PDF', 'status': 'Selesai'},
-          {'title': 'Video Pengenalan Algoritma', 'type': 'Video', 'status': 'Belum Selesai'},
-          {'title': 'Materi PDF - Dasar Pemrograman', 'type': 'PDF', 'status': 'Selesai'},
-        ]
-      },
-      {
-        'section': 'Pertemuan 2: Struktur Data Dasar',
-        'items': [
-          {'title': 'Modul Praktikum 1', 'type': 'PDF', 'status': 'Belum Dibuka'},
-          {'title': 'Link Referensi Eksternal', 'type': 'Link', 'status': 'Belum Dibuka'},
-        ]
-      },
-    ];
+    if (_isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    if (_meetingSections.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.library_books, size: 80, color: AppColors.primary.withOpacity(0.2)),
+            const SizedBox(height: 16),
+            const Text('Belum ada materi yang tersedia.', style: TextStyle(color: AppColors.textSecondary)),
+          ],
+        ),
+      );
+    }
 
     return ListView.builder(
       padding: const EdgeInsets.all(20),
-      itemCount: sections.length,
+      itemCount: _meetingSections.length,
       itemBuilder: (context, index) {
-        final section = sections[index];
-        final items = section['items'] as List<Map<String, String>>;
+        final section = _meetingSections[index];
 
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -203,11 +219,11 @@ class _ClassDetailScreenState extends State<ClassDetailScreen> {
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 12),
               child: Text(
-                section['section'] as String,
+                section.title,
                 style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: AppColors.textPrimary),
               ),
             ),
-            ...items.map((item) => _buildMaterialItem(item)).toList(),
+            ...section.materials.map((item) => _buildMaterialItem(item)),
             const SizedBox(height: 16),
           ],
         );
@@ -215,61 +231,86 @@ class _ClassDetailScreenState extends State<ClassDetailScreen> {
     );
   }
 
-  Widget _buildMaterialItem(Map<String, String> item) {
-    bool isCompleted = item['status'] == 'Selesai';
+  Widget _buildMaterialItem(MaterialItem item) {
+    bool isCompleted = _materialOpenedStatus[item.id] ?? false;
     IconData typeIcon;
     Color iconColor;
 
-    switch (item['type']) {
-      case 'PDF':
+    switch (item.type) {
+      case MaterialFileType.pdf:
         typeIcon = Icons.picture_as_pdf;
         iconColor = Colors.red;
         break;
-      case 'Video':
+      case MaterialFileType.video:
         typeIcon = Icons.play_circle_fill;
         iconColor = Colors.blue;
         break;
-      case 'Link':
+      case MaterialFileType.link:
         typeIcon = Icons.link;
         iconColor = Colors.green;
+        break;
+      case MaterialFileType.doc:
+        typeIcon = Icons.description;
+        iconColor = Colors.blueAccent;
         break;
       default:
         typeIcon = Icons.insert_drive_file;
         iconColor = Colors.grey;
     }
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.black.withOpacity(0.05)),
-      ),
-      child: Row(
-        children: [
-          Icon(typeIcon, color: iconColor, size: 28),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  item['title']!,
-                  style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
-                ),
-                Text(
-                  'Tipe: ${item['type']}',
-                  style: const TextStyle(color: AppColors.textSecondary, fontSize: 12),
-                ),
-              ],
+    return GestureDetector(
+      onTap: () async {
+        await Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => MaterialViewerScreen(
+              material: item,
+              userName: widget.userName,
             ),
           ),
-          if (isCompleted)
-            const Icon(Icons.check_circle, color: Colors.green, size: 24)
-          else
-            const Icon(Icons.radio_button_unchecked, color: Colors.grey, size: 24),
-        ],
+        );
+        _loadAllData(); // Refresh to update status
+      },
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.black.withOpacity(0.05)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.02),
+              blurRadius: 5,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Icon(typeIcon, color: iconColor, size: 28),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    item.title,
+                    style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+                  ),
+                  Text(
+                    'Tipe: ${item.type.name.toUpperCase()}',
+                    style: const TextStyle(color: AppColors.textSecondary, fontSize: 12),
+                  ),
+                ],
+              ),
+            ),
+            if (isCompleted)
+              const Icon(Icons.check_circle, color: Colors.green, size: 24)
+            else
+              const Icon(Icons.radio_button_unchecked, color: Colors.grey, size: 24),
+          ],
+        ),
       ),
     );
   }
@@ -356,7 +397,7 @@ class _ClassDetailScreenState extends State<ClassDetailScreen> {
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
-                        submission.fileName,
+                        submission!.fileName,
                         style: const TextStyle(fontSize: 13, color: AppColors.textPrimary),
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -381,7 +422,7 @@ class _ClassDetailScreenState extends State<ClassDetailScreen> {
                         ),
                       );
                       if (result == true) {
-                        _loadQuizData(); // Refresh all data
+                        _loadAllData(); // Refresh all data
                       }
                     } else {
                       _showSubmissionDetails(submission);
@@ -587,7 +628,7 @@ class _ClassDetailScreenState extends State<ClassDetailScreen> {
                         ),
                       );
                       if (result == true) {
-                        _loadQuizData();
+                        _loadAllData();
                       }
                     },
                     style: ElevatedButton.styleFrom(
