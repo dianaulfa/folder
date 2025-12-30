@@ -8,6 +8,8 @@ import '../announcements/announcement_list_screen.dart';
 import '../announcements/announcement_detail_screen.dart';
 import '../announcements/services/announcement_service.dart';
 import '../announcements/models/announcement_model.dart';
+import '../courses/models/course_model.dart';
+import '../courses/services/course_service.dart';
 
 class DashboardScreen extends StatefulWidget {
   final String userName;
@@ -21,13 +23,23 @@ class DashboardScreen extends StatefulWidget {
 class _DashboardScreenState extends State<DashboardScreen> {
   int _currentIndex = 0;
   final AnnouncementService _announcementService = AnnouncementService();
+  final CourseService _courseService = CourseService();
   List<Announcement> _latestAnnouncements = [];
+  List<Course> _latestCourses = [];
   bool _isAnnouncementsLoading = true;
+  bool _isCoursesLoading = true;
 
   @override
   void initState() {
     super.initState();
-    _loadLatestAnnouncements();
+    _loadData();
+  }
+
+  Future<void> _loadData() async {
+    await Future.wait([
+      _loadLatestAnnouncements(),
+      _loadLatestCourses(),
+    ]);
   }
 
   Future<void> _loadLatestAnnouncements() async {
@@ -36,6 +48,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
     setState(() {
       _latestAnnouncements = data;
       _isAnnouncementsLoading = false;
+    });
+  }
+
+  Future<void> _loadLatestCourses() async {
+    setState(() => _isCoursesLoading = true);
+    final data = await _courseService.getLatestProgressCourses(2);
+    setState(() {
+      _latestCourses = data;
+      _isCoursesLoading = false;
     });
   }
 
@@ -364,21 +385,40 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Widget _buildProgressList() {
+    if (_isCoursesLoading) {
+      return const Center(child: Padding(
+        padding: EdgeInsets.symmetric(vertical: 20),
+        child: CircularProgressIndicator(),
+      ));
+    }
+
+    if (_latestCourses.isEmpty) {
+      return const Center(child: Text('Tidak ada kelas aktif.', style: TextStyle(color: AppColors.textSecondary)));
+    }
+
     return Column(
-      children: [
-        _buildProgressItem('Introduction to Programming', 0.75),
-        const SizedBox(height: 16),
-        _buildProgressItem('Data Structures', 0.40),
-      ],
+      children: _latestCourses.map((course) {
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 12),
+          child: _buildProgressItem(course),
+        );
+      }).toList(),
     );
   }
 
-  Widget _buildProgressItem(String title, double progress) {
+  Widget _buildProgressItem(Course course) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.02),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -386,15 +426,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
-              Text('${(progress * 100).toInt()}%', style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold)),
+              Text(course.name, style: const TextStyle(fontWeight: FontWeight.w600)),
+              Text('${(course.progress * 100).toInt()}%', style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold)),
             ],
           ),
           const SizedBox(height: 12),
           ClipRRect(
             borderRadius: BorderRadius.circular(10),
             child: LinearProgressIndicator(
-              value: progress,
+              value: course.progress,
               backgroundColor: AppColors.primary.withOpacity(0.1),
               valueColor: const AlwaysStoppedAnimation<Color>(AppColors.primary),
               minHeight: 8,
