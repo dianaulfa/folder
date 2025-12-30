@@ -2,6 +2,7 @@ import 'dart:convert';
 
 enum MaterialFileType {
   pdf,
+  ppt,
   video,
   link,
   doc,
@@ -13,6 +14,7 @@ class MaterialItem {
   final String title;
   final MaterialFileType type;
   final String contentUrl;
+  final List<String>? slideUrls; // For PPT/Slides
   final String description;
 
   MaterialItem({
@@ -20,6 +22,7 @@ class MaterialItem {
     required this.title,
     required this.type,
     required this.contentUrl,
+    this.slideUrls,
     this.description = '',
   });
 
@@ -29,6 +32,7 @@ class MaterialItem {
       'title': title,
       'type': type.name,
       'contentUrl': contentUrl,
+      'slideUrls': slideUrls,
       'description': description,
     };
   }
@@ -39,6 +43,7 @@ class MaterialItem {
       title: map['title'] ?? '',
       type: MaterialFileType.values.byName(map['type'] ?? 'other'),
       contentUrl: map['contentUrl'] ?? '',
+      slideUrls: map['slideUrls'] != null ? List<String>.from(map['slideUrls']) : null,
       description: map['description'] ?? '',
     );
   }

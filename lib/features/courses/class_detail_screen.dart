@@ -241,6 +241,10 @@ class _ClassDetailScreenState extends State<ClassDetailScreen> {
         typeIcon = Icons.picture_as_pdf;
         iconColor = Colors.red;
         break;
+      case MaterialFileType.ppt:
+        typeIcon = Icons.slideshow;
+        iconColor = Colors.orange;
+        break;
       case MaterialFileType.video:
         typeIcon = Icons.play_circle_fill;
         iconColor = Colors.blue;
