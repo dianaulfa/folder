@@ -10,6 +10,9 @@ import '../announcements/services/announcement_service.dart';
 import '../announcements/models/announcement_model.dart';
 import '../courses/models/course_model.dart';
 import '../courses/services/course_service.dart';
+import '../profile/models/user_profile.dart';
+import '../profile/services/profile_service.dart';
+import 'dart:io';
 
 class DashboardScreen extends StatefulWidget {
   final String userName;
@@ -24,8 +27,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
   int _currentIndex = 0;
   final AnnouncementService _announcementService = AnnouncementService();
   final CourseService _courseService = CourseService();
+  final ProfileService _profileService = ProfileService();
   List<Announcement> _latestAnnouncements = [];
   List<Course> _latestCourses = [];
+  UserProfile? _userProfile;
   bool _isAnnouncementsLoading = true;
   bool _isCoursesLoading = true;
 
@@ -39,7 +44,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
     await Future.wait([
       _loadLatestAnnouncements(),
       _loadLatestCourses(),
+      _loadProfile(),
     ]);
+  }
+
+  Future<void> _loadProfile() async {
+    final profile = await _profileService.getProfile(widget.userName);
+    setState(() {
+      _userProfile = profile;
+    });
   }
 
   Future<void> _loadLatestAnnouncements() async {
@@ -124,7 +137,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       ),
                     ),
                     Text(
-                      widget.userName,
+                      _userProfile?.fullName ?? widget.userName,
                       style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                         color: Colors.white,
                         fontWeight: FontWeight.bold,
@@ -133,18 +146,24 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   ],
                 ),
                 GestureDetector(
-                  onTap: () {
-                    Navigator.push(
+                    onTap: () async {
+                    await Navigator.push(
                       context,
                       MaterialPageRoute(
                         builder: (context) => ProfileScreen(userName: widget.userName),
                       ),
                     );
+                    _loadProfile();
                   },
-                  child: const CircleAvatar(
+                  child: CircleAvatar(
                     radius: 28,
                     backgroundColor: Colors.white24,
-                    child: Icon(Icons.person, color: Colors.white, size: 32),
+                    backgroundImage: _userProfile?.profilePicturePath != null
+                        ? FileImage(File(_userProfile!.profilePicturePath!))
+                        : null,
+                    child: _userProfile?.profilePicturePath == null
+                        ? const Icon(Icons.person, color: Colors.white, size: 32)
+                        : null,
                   ),
                 ),
               ],

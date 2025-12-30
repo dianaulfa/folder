@@ -4,6 +4,9 @@ import 'class_detail_screen.dart';
 import '../profile/profile_screen.dart';
 import 'models/course_model.dart';
 import 'services/course_service.dart';
+import '../profile/services/profile_service.dart';
+import '../profile/models/user_profile.dart';
+import 'dart:io';
 
 class MyClassesScreen extends StatefulWidget {
   final String userName;
@@ -16,13 +19,29 @@ class MyClassesScreen extends StatefulWidget {
 
 class _MyClassesScreenState extends State<MyClassesScreen> {
   final CourseService _courseService = CourseService();
+  final ProfileService _profileService = ProfileService();
   List<Course> _courses = [];
+  UserProfile? _userProfile;
   bool _isLoading = true;
 
   @override
   void initState() {
     super.initState();
-    _loadCourses();
+    _loadData();
+  }
+
+  Future<void> _loadData() async {
+    await Future.wait([
+      _loadCourses(),
+      _loadProfile(),
+    ]);
+  }
+
+  Future<void> _loadProfile() async {
+    final profile = await _profileService.getProfile(widget.userName);
+    setState(() {
+      _userProfile = profile;
+    });
   }
 
   Future<void> _loadCourses() async {
@@ -43,16 +62,29 @@ class _MyClassesScreenState extends State<MyClassesScreen> {
         centerTitle: true,
         elevation: 0,
         actions: [
-          IconButton(
-            icon: const Icon(Icons.person_outline),
-            onPressed: () {
-              Navigator.push(
+          GestureDetector(
+            onTap: () async {
+              await Navigator.push(
                 context,
                 MaterialPageRoute(
                   builder: (context) => ProfileScreen(userName: widget.userName),
                 ),
               );
+              _loadProfile();
             },
+            child: Padding(
+              padding: const EdgeInsets.only(right: 16),
+              child: CircleAvatar(
+                radius: 18,
+                backgroundColor: AppColors.primary.withOpacity(0.1),
+                backgroundImage: _userProfile?.profilePicturePath != null
+                    ? FileImage(File(_userProfile!.profilePicturePath!))
+                    : null,
+                child: _userProfile?.profilePicturePath == null
+                    ? const Icon(Icons.person, size: 20, color: AppColors.primary)
+                    : null,
+              ),
+            ),
           ),
           const SizedBox(width: 8),
         ],
