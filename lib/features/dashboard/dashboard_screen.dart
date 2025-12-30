@@ -1,8 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import '../../core/theme/app_theme.dart';
 import '../courses/my_classes_screen.dart';
 import '../notifications/notification_screen.dart';
 import '../profile/profile_screen.dart';
+import '../announcements/announcement_list_screen.dart';
+import '../announcements/announcement_detail_screen.dart';
+import '../announcements/services/announcement_service.dart';
+import '../announcements/models/announcement_model.dart';
 
 class DashboardScreen extends StatefulWidget {
   final String userName;
@@ -15,6 +20,24 @@ class DashboardScreen extends StatefulWidget {
 
 class _DashboardScreenState extends State<DashboardScreen> {
   int _currentIndex = 0;
+  final AnnouncementService _announcementService = AnnouncementService();
+  List<Announcement> _latestAnnouncements = [];
+  bool _isAnnouncementsLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadLatestAnnouncements();
+  }
+
+  Future<void> _loadLatestAnnouncements() async {
+    setState(() => _isAnnouncementsLoading = true);
+    final data = await _announcementService.getLatestAnnouncements(2);
+    setState(() {
+      _latestAnnouncements = data;
+      _isAnnouncementsLoading = false;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -120,8 +143,22 @@ class _DashboardScreenState extends State<DashboardScreen> {
               const SizedBox(height: 32),
 
               // Recent Announcements
-              _buildSectionHeader('Pengumuman Terbaru'),
-              const SizedBox(height: 12),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  _buildSectionHeader('Pengumuman Terbaru'),
+                  TextButton(
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => const AnnouncementListScreen()),
+                      );
+                    },
+                    child: const Text('Lihat Semua', style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold)),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
               _buildAnnouncementList(),
 
               const SizedBox(height: 32),
@@ -226,37 +263,102 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Widget _buildAnnouncementList() {
+    if (_isAnnouncementsLoading) {
+      return const Center(child: Padding(
+        padding: EdgeInsets.symmetric(vertical: 20),
+        child: CircularProgressIndicator(),
+      ));
+    }
+
+    if (_latestAnnouncements.isEmpty) {
+      return const Center(child: Text('Tidak ada pengumuman.', style: TextStyle(color: AppColors.textSecondary)));
+    }
+
     return Column(
-      children: [
-        _buildAnnouncementItem(Icons.campaign, 'Jadwal Ujian Semester', '2 jam yang lalu'),
-        const SizedBox(height: 12),
-        _buildAnnouncementItem(Icons.event, 'Libur Akademik Mendatang', '1 hari yang lalu'),
-      ],
+      children: _latestAnnouncements.map((announcement) {
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 12),
+          child: _buildAnnouncementItem(announcement),
+        );
+      }).toList(),
     );
   }
 
-  Widget _buildAnnouncementItem(IconData icon, String title, String time) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Row(
-        children: [
-          Icon(icon, color: AppColors.primary, size: 24),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
-                Text(time, style: const TextStyle(color: AppColors.textSecondary, fontSize: 12)),
-              ],
-            ),
+  Widget _buildAnnouncementItem(Announcement announcement) {
+    IconData typeIcon;
+    Color typeColor;
+
+    switch (announcement.type) {
+      case AnnouncementType.urgent:
+        typeIcon = Icons.error_outline;
+        typeColor = Colors.red;
+        break;
+      case AnnouncementType.event:
+        typeIcon = Icons.event;
+        typeColor = Colors.orange;
+        break;
+      case AnnouncementType.academic:
+        typeIcon = Icons.school;
+        typeColor = Colors.blue;
+        break;
+      default:
+        typeIcon = Icons.info_outline;
+        typeColor = AppColors.primary;
+    }
+
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => AnnouncementDetailScreen(announcement: announcement),
           ),
-          const Icon(Icons.chevron_right, color: AppColors.textSecondary),
-        ],
+        );
+      },
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.02),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: typeColor.withOpacity(0.1),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(typeIcon, color: typeColor, size: 20),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    announcement.title, 
+                    style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  Text(
+                    '${announcement.author} • ${DateFormat('dd MMM').format(announcement.publishedAt)}', 
+                    style: const TextStyle(color: AppColors.textSecondary, fontSize: 11)
+                  ),
+                ],
+              ),
+            ),
+            const Icon(Icons.chevron_right, color: AppColors.textSecondary, size: 20),
+          ],
+        ),
       ),
     );
   }
